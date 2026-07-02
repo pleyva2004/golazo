@@ -1,0 +1,16 @@
+# Xcode / build
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+
+# XcodeGen generates this from project.yml — not source of truth
+Golazo.xcodeproj/
+
+# Screenshots produced by run.sh
+*-screenshot.png
+
+# macOS
+.DS_Store
