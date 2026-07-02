@@ -22,8 +22,6 @@ struct PredictionDetailView: View {
             .padding()
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle("Prediction")
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var header: some View {

@@ -118,9 +118,16 @@ enum MockData {
         ]),
     ]
 
+    // Flattened, ordered lists used by the pager.
+    static let allTeams: [Team] = {
+        var seen = Set<String>(), out = [Team]()
+        for (_, ms) in rounds { for m in ms { for t in [m.home, m.away] where seen.insert(t.id).inserted { out.append(t) } } }
+        return out
+    }()
+    static let upcomingMatches: [Match] = rounds.flatMap(\.matches).filter { !$0.isPlayed }
+
     // Smallest thing that fails if the mock is malformed.
-    static func selfCheck() {
-        for (_, matches) in rounds {
+    static func selfCheck() {        for (_, matches) in rounds {
             for m in matches {
                 assert(m.home.starters.count == 11, "\(m.home.name) needs 11 starters")
                 assert(m.away.starters.count == 11, "\(m.away.name) needs 11 starters")

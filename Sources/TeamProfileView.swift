@@ -27,7 +27,6 @@ struct TeamProfileView: View {
             .padding()
         }
         .background(Color(.systemGroupedBackground))
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var header: some View {
