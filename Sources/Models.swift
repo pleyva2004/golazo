@@ -40,17 +40,26 @@ struct Match: Identifiable, Hashable {
     let stage: Stage
     let home: Team
     let away: Team
-    // Played matches carry a score; upcoming matches carry a prediction instead.
-    let homeScore: Int?
-    let awayScore: Int?
-    let homeWinPct: Int?    // aggregated prediction (upcoming only)
-    let awayWinPct: Int?
-    let models: [ModelPrediction]
+    let dateLabel: String            // "Fri, Jul 3" or "Wed, Jul 8, 5:00 PM"
+    // `var` (not `let`) so the synthesized memberwise init exposes them with defaults.
+    var statusLabel: String? = nil   // "FT", "FT (P)"; nil for scheduled
+    // Played matches carry a score (+ optional shootout); upcoming carry a prediction instead.
+    var homeScore: Int? = nil
+    var awayScore: Int? = nil
+    var homePens: Int? = nil
+    var awayPens: Int? = nil
+    var homeWinPct: Int? = nil        // aggregated prediction (upcoming only)
+    var awayWinPct: Int? = nil
+    var projected: Bool = false       // feeders unresolved → show TBD in the bracket
+    var models: [ModelPrediction] = []
 
     var isPlayed: Bool { homeScore != nil && awayScore != nil }
+    var hasPrediction: Bool { !models.isEmpty }
     var winner: Team? {
-        guard let h = homeScore, let a = awayScore, h != a else { return nil }
-        return h > a ? home : away
+        guard let h = homeScore, let a = awayScore else { return nil }
+        if h != a { return h > a ? home : away }
+        if let hp = homePens, let ap = awayPens, hp != ap { return hp > ap ? home : away }
+        return nil
     }
     var drawPct: Int? {
         guard let h = homeWinPct, let a = awayWinPct else { return nil }

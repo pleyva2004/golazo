@@ -79,17 +79,18 @@ enum MockData {
     static let rounds: [(stage: Stage, matches: [Match])] = [
         (.quarterfinal, [
             Match(stage: .quarterfinal, home: brasil, away: hrvatska,
-                  homeScore: 2, awayScore: 1, homeWinPct: nil, awayWinPct: nil, models: []),
+                  dateLabel: "Fri, Jul 3", statusLabel: "FT", homeScore: 2, awayScore: 1),
             Match(stage: .quarterfinal, home: nederland, away: argentina,
-                  homeScore: 1, awayScore: 2, homeWinPct: nil, awayWinPct: nil, models: []),
+                  dateLabel: "Fri, Jul 3", statusLabel: "FT (P)",
+                  homeScore: 1, awayScore: 1, homePens: 3, awayPens: 4),
             Match(stage: .quarterfinal, home: espana, away: maroc,
-                  homeScore: 2, awayScore: 0, homeWinPct: nil, awayWinPct: nil, models: []),
+                  dateLabel: "Sat, Jul 4", statusLabel: "FT", homeScore: 2, awayScore: 0),
             Match(stage: .quarterfinal, home: france, away: deutschland,
-                  homeScore: 3, awayScore: 1, homeWinPct: nil, awayWinPct: nil, models: []),
+                  dateLabel: "Sat, Jul 4", statusLabel: "FT", homeScore: 3, awayScore: 1),
         ]),
         (.semifinal, [
             Match(stage: .semifinal, home: brasil, away: argentina,
-                  homeScore: nil, awayScore: nil, homeWinPct: 46, awayWinPct: 41, models: [
+                  dateLabel: "Wed, Jul 8, 5:00 PM", homeWinPct: 46, awayWinPct: 41, models: [
                     ModelPrediction(model: "Elo", homeWinPct: 44, awayWinPct: 42),
                     ModelPrediction(model: "xG / Poisson", homeWinPct: 48, awayWinPct: 40),
                     ModelPrediction(model: "Market odds", homeWinPct: 45, awayWinPct: 41),
@@ -97,7 +98,7 @@ enum MockData {
                     ModelPrediction(model: "Neural net", homeWinPct: 46, awayWinPct: 43),
                   ]),
             Match(stage: .semifinal, home: espana, away: france,
-                  homeScore: nil, awayScore: nil, homeWinPct: 39, awayWinPct: 47, models: [
+                  dateLabel: "Thu, Jul 9, 5:00 PM", homeWinPct: 39, awayWinPct: 47, models: [
                     ModelPrediction(model: "Elo", homeWinPct: 40, awayWinPct: 46),
                     ModelPrediction(model: "xG / Poisson", homeWinPct: 37, awayWinPct: 49),
                     ModelPrediction(model: "Market odds", homeWinPct: 39, awayWinPct: 47),
@@ -106,9 +107,11 @@ enum MockData {
                   ]),
         ]),
         (.final, [
-            // Projected favorites until the semis resolve.
+            // Feeders unresolved until the semis are played → shown as TBD in the bracket,
+            // but keep projected favorites + models so the prediction page still works.
             Match(stage: .final, home: argentina, away: france,
-                  homeScore: nil, awayScore: nil, homeWinPct: 48, awayWinPct: 45, models: [
+                  dateLabel: "Sun, Jul 12, 3:00 PM", homeWinPct: 48, awayWinPct: 45,
+                  projected: true, models: [
                     ModelPrediction(model: "Elo", homeWinPct: 49, awayWinPct: 44),
                     ModelPrediction(model: "xG / Poisson", homeWinPct: 47, awayWinPct: 46),
                     ModelPrediction(model: "Market odds", homeWinPct: 48, awayWinPct: 45),

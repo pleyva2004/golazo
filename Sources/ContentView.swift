@@ -75,24 +75,82 @@ struct PagerBar: View {
     }
 }
 
+// Fixed 4→2→1 bracket geometry + dark palette.
+// ponytail: hardcoded for 3 rounds; generalize to an N-round engine only if data grows to R16/R32.
+private enum BK {
+    static let bg = Color(hex: "1C1C1E")
+    static let card = Color(hex: "2C2C2E")
+    static let secondary = Color(hex: "8E8E93")
+    static let cardW: CGFloat = 232
+    static let cardH: CGFloat = 104
+    static let colGap: CGFloat = 48
+    static let rowGap: CGFloat = 18
+    static let headerH: CGFloat = 44
+    static var unit: CGFloat { cardH + rowGap }
+
+    static func x(_ r: Int) -> CGFloat { CGFloat(r) * (cardW + colGap) }
+    static func centerY(_ r: Int, _ i: Int) -> CGFloat {
+        let p = pow(2.0, Double(r))
+        let topPad = CGFloat((p - 1) / 2) * unit
+        let step = CGFloat(p) * unit
+        return headerH + topPad + CGFloat(i) * step + cardH / 2
+    }
+}
+
 struct BracketView: View {
+    private let rounds = MockData.rounds
+
+    private var totalW: CGFloat { BK.x(rounds.count - 1) + BK.cardW }
+    private var totalH: CGFloat { BK.centerY(0, rounds[0].matches.count - 1) + BK.cardH / 2 + 8 }
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 28) {
-                ForEach(MockData.rounds, id: \.stage) { round in
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(round.stage.rawValue)
-                            .font(.title3.bold())
-                            .padding(.horizontal)
-                        ForEach(round.matches) { match in
-                            MatchCard(match: match)
-                        }
+        ScrollView([.horizontal, .vertical], showsIndicators: false) {
+            ZStack(alignment: .topLeading) {
+                Connectors(rounds: rounds).frame(width: totalW, height: totalH)
+
+                ForEach(Array(rounds.enumerated()), id: \.offset) { r, round in
+                    Text(round.stage.rawValue)
+                        .font(.headline).foregroundStyle(.white)
+                        .frame(width: BK.cardW, alignment: .leading)
+                        .offset(x: BK.x(r) + 4, y: 10)
+
+                    ForEach(Array(round.matches.enumerated()), id: \.element.id) { i, match in
+                        MatchCard(match: match)
+                            .offset(x: BK.x(r), y: BK.centerY(r, i) - BK.cardH / 2)
                     }
                 }
             }
-            .padding(.vertical)
+            .frame(width: totalW, height: totalH, alignment: .topLeading)
+            .padding(20)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(BK.bg)
+    }
+}
+
+// Elbow lines from each pair of feeder matches into the next round's match.
+struct Connectors: View {
+    let rounds: [(stage: Stage, matches: [Match])]
+
+    var body: some View {
+        Canvas { ctx, _ in
+            var path = Path()
+            for r in 1..<rounds.count {
+                for j in 0..<rounds[r].matches.count {
+                    let px = BK.x(r), pcy = BK.centerY(r, j)
+                    for c in [2 * j, 2 * j + 1] where c < rounds[r - 1].matches.count {
+                        let cx = BK.x(r - 1) + BK.cardW
+                        let ccy = BK.centerY(r - 1, c)
+                        let midX = (cx + px) / 2
+                        path.move(to: CGPoint(x: cx, y: ccy))
+                        path.addLine(to: CGPoint(x: midX, y: ccy))
+                        path.addLine(to: CGPoint(x: midX, y: pcy))
+                        path.addLine(to: CGPoint(x: px, y: pcy))
+                    }
+                }
+            }
+            ctx.stroke(path, with: .color(BK.secondary.opacity(0.5)),
+                       style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
+        }
     }
 }
 
@@ -101,59 +159,81 @@ struct MatchCard: View {
     let match: Match
 
     var body: some View {
-        HStack(spacing: 8) {
-            teamColumn(match.home)
-            centerColumn
-            teamColumn(match.away)
+        VStack(alignment: .leading, spacing: 8) {
+            header
+            teamRow(match.home, score: match.homeScore, pens: match.homePens)
+            teamRow(match.away, score: match.awayScore, pens: match.awayPens)
         }
-        .padding()
-        .background(.background, in: RoundedRectangle(cornerRadius: 16))
-        .padding(.horizontal)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(width: BK.cardW, height: BK.cardH, alignment: .top)
+        .background(BK.card, in: RoundedRectangle(cornerRadius: 14))
     }
 
-    // Tapping a flag jumps the pager to that team's profile.
-    private func teamColumn(_ team: Team) -> some View {
-        Button { router.go(to: .team(team)) } label: {
-            VStack(spacing: 6) {
-                FlagCircle(team: team, size: 56)
-                Text(team.endonym)
-                    .font(.subheadline.weight(isWinner(team) ? .bold : .regular))
-                    .foregroundStyle(isWinner(team) ? Color.primary : .secondary)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.plain)
-    }
-
-    @ViewBuilder private var centerColumn: some View {
-        if match.isPlayed {
-            VStack(spacing: 4) {
-                Text("\(match.homeScore!)–\(match.awayScore!)")
-                    .font(.title2.bold().monospacedDigit())
-                Text("FT").font(.caption2).foregroundStyle(.secondary)
-            }
-            .frame(width: 76)
-        } else {
-            // Upcoming: tapping the center jumps to the prediction breakdown.
+    @ViewBuilder private var header: some View {
+        if match.hasPrediction {
+            // Tapping the header of an upcoming match opens the prediction breakdown.
             Button { router.go(to: .prediction(match)) } label: {
-                VStack(spacing: 5) {
-                    Text("vs").font(.caption).foregroundStyle(.secondary)
-                    WinBar(home: match.homeWinPct ?? 0, away: match.awayWinPct ?? 0)
-                    HStack(spacing: 3) {
-                        Text("\(match.homeWinPct ?? 0)%").font(.caption2.monospacedDigit())
-                        Image(systemName: "chart.bar.xaxis").font(.system(size: 9))
-                        Text("\(match.awayWinPct ?? 0)%").font(.caption2.monospacedDigit())
-                    }
-                    .foregroundStyle(.secondary)
+                HStack {
+                    Text(match.dateLabel).font(.caption).foregroundStyle(BK.secondary)
+                    Spacer()
+                    Image(systemName: "chart.bar.xaxis").font(.caption2).foregroundStyle(BK.secondary)
                 }
-                .frame(width: 76)
             }
             .buttonStyle(.plain)
+        } else {
+            HStack {
+                Text(match.dateLabel).font(.caption).foregroundStyle(BK.secondary)
+                Spacer()
+                if let s = match.statusLabel { StatusPill(text: s) }
+            }
         }
     }
 
-    private func isWinner(_ team: Team) -> Bool { match.winner == team }
+    private func teamRow(_ team: Team, score: Int?, pens: Int?) -> some View {
+        let tbd = match.projected
+        let isWin = !tbd && match.winner == team
+        let dimmed = match.isPlayed && !isWin
+        let color: Color = tbd || dimmed ? BK.secondary : .white
+
+        return Button { if !tbd { router.go(to: .team(team)) } } label: {
+            HStack(spacing: 8) {
+                if tbd {
+                    Image(systemName: "shield.fill").font(.system(size: 15)).foregroundStyle(BK.secondary)
+                    Text("TBD").font(.subheadline).foregroundStyle(BK.secondary)
+                } else {
+                    FlagBadge(team: team)
+                    Text(team.endonym)
+                        .font(.subheadline).fontWeight(isWin ? .bold : .regular)
+                        .foregroundStyle(color).lineLimit(1)
+                }
+                Spacer()
+                if let sc = score {
+                    Text(scoreText(sc, pens))
+                        .font(.subheadline.monospacedDigit()).fontWeight(isWin ? .bold : .regular)
+                        .foregroundStyle(color)
+                    if isWin {
+                        Image(systemName: "chevron.left").font(.caption2.bold()).foregroundStyle(.white)
+                    }
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(tbd)
+    }
+
+    private func scoreText(_ s: Int, _ p: Int?) -> String { p == nil ? "\(s)" : "\(s) (\(p!))" }
+}
+
+struct StatusPill: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(BK.secondary)
+            .padding(.horizontal, 7).padding(.vertical, 3)
+            .background(Capsule().fill(.white.opacity(0.12)))
+    }
 }
 
 // Home | draw | away probability bar.
